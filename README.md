@@ -27,7 +27,7 @@ A Model Context Protocol (MCP) server implementation for Microsoft OneNote, enab
 ## Installation
 
 ```bash
-npm install @modelcontextprotocol/server-onenote
+npm install -g mcp-server-onenote
 ```
 
 ## Configuration
@@ -46,7 +46,7 @@ Add this to your MCP client configuration (e.g. Claude Desktop):
   "mcpServers": {
     "onenote": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-onenote"],
+      "args": ["-y", "mcp-server-onenote"],
       "env": {
         "AZURE_TENANT_ID": "<YOUR_TENANT_ID>",
         "AZURE_CLIENT_ID": "<YOUR_CLIENT_ID>",
@@ -67,36 +67,6 @@ Add this to your MCP client configuration (e.g. Claude Desktop):
 4. Create a client secret
 5. Copy the tenant ID, client ID, and client secret for configuration
 
-## Examples
-
-### Managing Notebooks
-```typescript
-// Create a notebook
-const notebook = await onenote.notebooks.createNotebook({
-  name: "My Notebook",
-  sectionName: "First Section"
-});
-
-// List notebooks
-const notebooks = await onenote.notebooks.listNotebooks();
-```
-
-### Managing Pages
-```typescript
-// Create a page
-const page = await onenote.pages.createPage({
-  title: "My Page",
-  content: "<h1>Hello World</h1><p>This is a test page.</p>",
-  sectionId: "section-id"
-});
-
-// Search pages
-const searchResults = await onenote.pages.searchPages({
-  query: "hello world",
-  notebookId: "optional-notebook-id"
-});
-```
-
 ## Development
 
 ```bash
@@ -115,8 +85,8 @@ npm run lint
 
 ## Contributing
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for information about contributing to this repository.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for information about contributing to this repository.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](../../LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
