@@ -1,4 +1,5 @@
 # OneNote MCP Server
+[![smithery badge](https://smithery.ai/badge/@modelcontextprotocol/server-onenote)](https://smithery.ai/server/@modelcontextprotocol/server-onenote)
 
 A Model Context Protocol (MCP) server implementation for Microsoft OneNote, enabling AI language models to interact with OneNote through a standardized interface.
 
@@ -26,6 +27,15 @@ A Model Context Protocol (MCP) server implementation for Microsoft OneNote, enab
 
 ## Installation
 
+### Installing via Smithery
+
+To install OneNote Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@modelcontextprotocol/server-onenote):
+
+```bash
+npx -y @smithery/cli install @modelcontextprotocol/server-onenote --client claude
+```
+
+### Manual Installation
 ```bash
 npm install -g mcp-server-onenote
 ```
