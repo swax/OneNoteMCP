@@ -1,0 +1,25 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    type: object
+    required:
+      - azureTenantId
+      - azureClientId
+      - azureClientSecret
+    properties:
+      azureTenantId:
+        type: string
+        description: The Azure tenant ID for the OneNote MCP server.
+      azureClientId:
+        type: string
+        description: The Azure application (client) ID for the OneNote MCP server.
+      azureClientSecret:
+        type: string
+        description: The Azure client secret for the OneNote MCP server.
+  commandFunction:
+    # A function that produces the CLI command to start the MCP on stdio.
+    |-
+    (config) => ({ command: 'node', args: ['dist/index.js'], env: { AZURE_TENANT_ID: config.azureTenantId, AZURE_CLIENT_ID: config.azureClientId, AZURE_CLIENT_SECRET: config.azureClientSecret } })
