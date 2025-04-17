@@ -1,9 +1,9 @@
 import { TokenCredential } from "@azure/identity";
 import { Client } from "@microsoft/microsoft-graph-client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getErrorMessage } from "src/utils/error"; // Import getErrorMessage
 import { z } from "zod";
 import { Page, PageCreateOptions, SearchOptions } from "../types";
+import { getErrorMessage } from "../utils/error"; // Import getErrorMessage
 
 export class PageManagement {
   private client: Client;

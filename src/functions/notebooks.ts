@@ -1,9 +1,9 @@
 import { TokenCredential } from "@azure/identity";
 import { Client } from "@microsoft/microsoft-graph-client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"; // Added import
-import { getErrorMessage } from "src/utils/error";
 import { z } from "zod"; // Added import
 import { Notebook, NotebookCreateOptions } from "../types";
+import { getErrorMessage } from "../utils/error";
 
 export class NotebookManagement {
   private client: Client;

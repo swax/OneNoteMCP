@@ -5,6 +5,8 @@ import { NotebookManagement } from "./functions/notebooks";
 import { PageManagement } from "./functions/pages";
 import { SectionManagement } from "./functions/sections";
 
+require("dotenv").config(); // Load environment variables from .env file
+
 export class OneNoteMCPServer extends McpServer {
   private credential: ClientSecretCredential;
 
@@ -32,7 +34,6 @@ export class OneNoteMCPServer extends McpServer {
 
     new NotebookManagement(this, this.credential);
     new PageManagement(this, this.credential);
-    // Instantiate SectionManagement, passing the server instance (this)
     new SectionManagement(this, this.credential);
   }
 
