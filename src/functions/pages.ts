@@ -1,205 +1,339 @@
-import { MCPFunction, MCPFunctionGroup } from '@modelcontextprotocol/typescript-sdk';
-import { Client } from '@microsoft/microsoft-graph-client';
-import { TokenCredential } from '@azure/identity';
-import { Page, PageCreateOptions, SearchOptions } from '../types';
+import { TokenCredential } from "@azure/identity";
+import { Client } from "@microsoft/microsoft-graph-client";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { Page, PageCreateOptions, SearchOptions } from "../types";
 
-export class PageManagement implements MCPFunctionGroup {
+export class PageManagement {
   private client: Client;
+  private server: McpServer;
+  private credential: TokenCredential;
 
-  constructor(credential: TokenCredential) {
+  constructor(server: McpServer, credential: TokenCredential) {
+    this.server = server;
+    this.credential = credential;
     this.client = Client.init({
       authProvider: async (done) => {
         try {
-          const token = await credential.getToken('https://graph.microsoft.com/.default');
-          done(null, token?.token || '');
+          const token = await this.credential.getToken(
+            "https://graph.microsoft.com/.default",
+          );
+          done(null, token?.token || "");
         } catch (error) {
-          done(error as Error, '');
+          done(error as Error, "");
         }
-      }
+      },
     });
+    this.registerTools();
   }
 
-  @MCPFunction({
-    description: 'List pages in a section',
-    parameters: {
-      type: 'object',
-      properties: {
-        sectionId: { type: 'string', description: 'Section ID' }
+  private registerTools() {
+    this.server.tool(
+      "listPages",
+      "List pages within a specific OneNote section",
+      {
+        sectionId: z
+          .string()
+          .describe("The ID of the section containing the pages"),
       },
-      required: ['sectionId']
-    }
-  })
-  async listPages({ sectionId }: { sectionId: string }): Promise<Page[]> {
-    try {
-      const response = await this.client
-        .api(`/me/onenote/sections/${sectionId}/pages`)
-        .select('id,title,createdDateTime,lastModifiedDateTime,contentUrl')
-        .get();
+      async ({
+        sectionId,
+      }: {
+        sectionId: string;
+      }): Promise<{
+        content: {
+          type: "resource";
+          resource: { mimeType: string; text: string };
+        }[];
+      }> => {
+        try {
+          const response = await this.client
+            .api(`/me/onenote/sections/${sectionId}/pages`)
+            .select("id,title,createdDateTime,lastModifiedDateTime,contentUrl")
+            .get();
 
-      return response.value.map((page: any) => ({
-        id: page.id,
-        title: page.title,
-        createdTime: page.createdDateTime,
-        lastModifiedTime: page.lastModifiedDateTime,
-        contentUrl: page.contentUrl
-      }));
-    } catch (error) {
-      throw new Error(`Failed to list pages: ${error.message}`);
-    }
-  }
-
-  @MCPFunction({
-    description: 'Search pages across notebooks',
-    parameters: {
-      type: 'object',
-      properties: {
-        query: { type: 'string', description: 'Search query' },
-        notebookId: { type: 'string', description: 'Optional notebook ID to limit search scope' },
-        sectionId: { type: 'string', description: 'Optional section ID to limit search scope' }
+          const pages: Page[] = response.value.map((page: any) => ({
+            id: page.id,
+            title: page.title,
+            createdTime: page.createdDateTime,
+            lastModifiedTime: page.lastModifiedDateTime,
+            contentUrl: page.contentUrl,
+          }));
+          return {
+            content: [
+              {
+                type: "resource",
+                resource: {
+                  mimeType: "application/json",
+                  text: JSON.stringify(pages),
+                },
+              },
+            ],
+          };
+        } catch (error) {
+          throw new Error(
+            `Failed to list pages in section ${sectionId}: ${error.message}`,
+          );
+        }
       },
-      required: ['query']
-    }
-  })
-  async searchPages({ query, notebookId, sectionId }: SearchOptions): Promise<Page[]> {
-    try {
-      let searchEndpoint = '/me/onenote/pages';
-      if (sectionId) {
-        searchEndpoint = `/me/onenote/sections/${sectionId}/pages`;
-      } else if (notebookId) {
-        searchEndpoint = `/me/onenote/notebooks/${notebookId}/pages`;
-      }
+    );
 
-      const response = await this.client
-        .api(searchEndpoint)
-        .search(query)
-        .select('id,title,createdDateTime,lastModifiedDateTime,contentUrl')
-        .get();
-
-      return response.value.map((page: any) => ({
-        id: page.id,
-        title: page.title,
-        createdTime: page.createdDateTime,
-        lastModifiedTime: page.lastModifiedDateTime,
-        contentUrl: page.contentUrl
-      }));
-    } catch (error) {
-      throw new Error(`Failed to search pages: ${error.message}`);
-    }
-  }
-
-  @MCPFunction({
-    description: 'Create new page',
-    parameters: {
-      type: 'object',
-      properties: {
-        title: { type: 'string', description: 'Page title' },
-        content: { type: 'string', description: 'Page content in HTML format' },
-        sectionId: { type: 'string', description: 'Section ID' }
+    this.server.tool(
+      "searchPages",
+      "Search for OneNote pages across notebooks or within a specific scope",
+      {
+        query: z.string().describe("The search query string"),
+        notebookId: z
+          .string()
+          .optional()
+          .describe("Optional notebook ID to limit search scope"),
+        sectionId: z
+          .string()
+          .optional()
+          .describe("Optional section ID to limit search scope"),
       },
-      required: ['title', 'content', 'sectionId']
-    }
-  })
-  async createPage({ title, content, sectionId }: PageCreateOptions): Promise<Page> {
-    try {
-      const htmlContent = `<!DOCTYPE html>
-        <html>
-          <head>
-            <title>${title}</title>
-          </head>
-          <body>
-            ${content}
-          </body>
-        </html>`;
+      async ({
+        query,
+        notebookId,
+        sectionId,
+      }: SearchOptions): Promise<{
+        content: {
+          type: "resource";
+          resource: { mimeType: string; text: string };
+        }[];
+      }> => {
+        try {
+          let searchEndpoint = "/me/onenote/pages";
+          if (sectionId) {
+            searchEndpoint = `/me/onenote/sections/${sectionId}/pages`;
+          } else if (notebookId) {
+            searchEndpoint = `/me/onenote/notebooks/${notebookId}/pages`;
+          }
 
-      const page = await this.client
-        .api(`/me/onenote/sections/${sectionId}/pages`)
-        .header('Content-Type', 'application/xhtml+xml')
-        .post(htmlContent);
+          const response = await this.client
+            .api(searchEndpoint)
+            .filter(`contains(title,'${query}')`)
+            .select("id,title,createdDateTime,lastModifiedDateTime,contentUrl")
+            .get();
 
-      return {
-        id: page.id,
-        title: page.title,
-        createdTime: page.createdDateTime,
-        lastModifiedTime: page.lastModifiedDateTime,
-        contentUrl: page.contentUrl
-      };
-    } catch (error) {
-      throw new Error(`Failed to create page: ${error.message}`);
-    }
-  }
-
-  @MCPFunction({
-    description: 'Get page content',
-    parameters: {
-      type: 'object',
-      properties: {
-        id: { type: 'string', description: 'Page ID' }
+          const pages: Page[] = response.value.map((page: any) => ({
+            id: page.id,
+            title: page.title,
+            createdTime: page.createdDateTime,
+            lastModifiedTime: page.lastModifiedDateTime,
+            contentUrl: page.contentUrl,
+          }));
+          return {
+            content: [
+              {
+                type: "resource",
+                resource: {
+                  mimeType: "application/json",
+                  text: JSON.stringify(pages),
+                },
+              },
+            ],
+          };
+        } catch (error) {
+          throw new Error(`Failed to search pages: ${error.message}`);
+        }
       },
-      required: ['id']
-    }
-  })
-  async getPage({ id }: { id: string }): Promise<Page> {
-    try {
-      const page = await this.client
-        .api(`/me/onenote/pages/${id}`)
-        .select('id,title,createdDateTime,lastModifiedDateTime,contentUrl')
-        .get();
+    );
 
-      const content = await this.client
-        .api(`/me/onenote/pages/${id}/content`)
-        .get();
-
-      return {
-        id: page.id,
-        title: page.title,
-        createdTime: page.createdDateTime,
-        lastModifiedTime: page.lastModifiedDateTime,
+    this.server.tool(
+      "createPage",
+      "Create a new OneNote page within a section",
+      {
+        title: z.string().describe("The title for the new page"),
+        content: z.string().describe("The content of the page in HTML format"),
+        sectionId: z
+          .string()
+          .describe("The ID of the section where the page will be created"),
+      },
+      async ({
+        title,
         content,
-        contentUrl: page.contentUrl
-      };
-    } catch (error) {
-      throw new Error(`Failed to get page ${id}: ${error.message}`);
-    }
-  }
+        sectionId,
+      }: PageCreateOptions): Promise<{
+        content: {
+          type: "resource";
+          resource: { mimeType: string; text: string };
+        }[];
+      }> => {
+        try {
+          const htmlContent = `<!DOCTYPE html>
+            <html>
+              <head>
+                <title>${title}</title>
+              </head>
+              <body>
+                ${content}
+              </body>
+            </html>`;
 
-  @MCPFunction({
-    description: 'Update page content',
-    parameters: {
-      type: 'object',
-      properties: {
-        id: { type: 'string', description: 'Page ID' },
-        content: { type: 'string', description: 'New page content in HTML format' }
-      },
-      required: ['id', 'content']
-    }
-  })
-  async updatePage({ id, content }: { id: string; content: string }): Promise<void> {
-    try {
-      await this.client
-        .api(`/me/onenote/pages/${id}/content`)
-        .patch(content);
-    } catch (error) {
-      throw new Error(`Failed to update page ${id}: ${error.message}`);
-    }
-  }
+          const page = await this.client
+            .api(`/me/onenote/sections/${sectionId}/pages`)
+            .header("Content-Type", "application/xhtml+xml")
+            .post(htmlContent);
 
-  @MCPFunction({
-    description: 'Delete page',
-    parameters: {
-      type: 'object',
-      properties: {
-        id: { type: 'string', description: 'Page ID' }
+          const createdPage: Page = {
+            id: page.id,
+            title: page.title,
+            createdTime: page.createdDateTime,
+            lastModifiedTime: page.lastModifiedDateTime,
+            contentUrl: page.contentUrl,
+          };
+          return {
+            content: [
+              {
+                type: "resource",
+                resource: {
+                  mimeType: "application/json",
+                  text: JSON.stringify(createdPage),
+                },
+              },
+            ],
+          };
+        } catch (error) {
+          throw new Error(
+            `Failed to create page in section ${sectionId}: ${error.message}`,
+          );
+        }
       },
-      required: ['id']
-    }
-  })
-  async deletePage({ id }: { id: string }): Promise<void> {
-    try {
-      await this.client
-        .api(`/me/onenote/pages/${id}`)
-        .delete();
-    } catch (error) {
-      throw new Error(`Failed to delete page ${id}: ${error.message}`);
-    }
+    );
+
+    this.server.tool(
+      "getPageContent",
+      "Get the content of a specific OneNote page",
+      {
+        id: z.string().describe("The ID of the page to retrieve content for"),
+      },
+      async ({
+        id,
+      }: {
+        id: string;
+      }): Promise<{
+        content: {
+          type: "resource";
+          resource: { mimeType: string; text: string };
+        }[];
+      }> => {
+        try {
+          const pageMeta = await this.client
+            .api(`/me/onenote/pages/${id}`)
+            .select("id,title,createdDateTime,lastModifiedDateTime,contentUrl")
+            .get();
+
+          const contentStream = await this.client
+            .api(`/me/onenote/pages/${id}/content`)
+            .get();
+
+          let pageContent = contentStream;
+          if (typeof contentStream !== "string") {
+            pageContent = await new Promise((resolve, reject) => {
+              let data = "";
+              contentStream.on("data", (chunk: any) => (data += chunk));
+              contentStream.on("end", () => resolve(data));
+              contentStream.on("error", (err: any) => reject(err));
+            });
+          }
+
+          const resultPage: Page = {
+            id: pageMeta.id,
+            title: pageMeta.title,
+            createdTime: pageMeta.createdDateTime,
+            lastModifiedTime: pageMeta.lastModifiedDateTime,
+            content: pageContent as string,
+            contentUrl: pageMeta.contentUrl,
+          };
+
+          return {
+            content: [
+              {
+                type: "resource",
+                resource: {
+                  mimeType: "text/html",
+                  text: resultPage.content ?? "",
+                },
+              },
+            ],
+          };
+        } catch (error) {
+          throw new Error(
+            `Failed to get content for page ${id}: ${error.message}`,
+          );
+        }
+      },
+    );
+
+    this.server.tool(
+      "updatePageContent",
+      "Update the content of an existing OneNote page",
+      {
+        id: z.string().describe("The ID of the page to update"),
+        content: z
+          .string()
+          .describe(
+            "The new page content in HTML format. This replaces the entire page body.",
+          ),
+      },
+      async ({
+        id,
+        content,
+      }: {
+        id: string;
+        content: string;
+      }): Promise<{ content: { type: "text"; text: string }[] }> => {
+        try {
+          const patchPayload = [
+            {
+              target: "body",
+              action: "replace",
+              content: content,
+            },
+          ];
+
+          await this.client
+            .api(`/me/onenote/pages/${id}/content`)
+            .header("Content-Type", "application/json")
+            .patch(patchPayload);
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Page ${id} content updated successfully.`,
+              },
+            ],
+          };
+        } catch (error) {
+          throw new Error(`Failed to update page ${id}: ${error.message}`);
+        }
+      },
+    );
+
+    this.server.tool(
+      "deletePage",
+      "Delete a specific OneNote page by its ID",
+      {
+        id: z.string().describe("The ID of the page to delete"),
+      },
+      async ({
+        id,
+      }: {
+        id: string;
+      }): Promise<{ content: { type: "text"; text: string }[] }> => {
+        try {
+          await this.client.api(`/me/onenote/pages/${id}`).delete();
+          return {
+            content: [
+              { type: "text", text: `Page ${id} deleted successfully.` },
+            ],
+          };
+        } catch (error) {
+          throw new Error(`Failed to delete page ${id}: ${error.message}`);
+        }
+      },
+    );
   }
 }

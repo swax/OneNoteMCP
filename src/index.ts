@@ -1,37 +1,47 @@
-import { MCPServer } from '@modelcontextprotocol/typescript-sdk';
-import { ClientSecretCredential } from '@azure/identity';
-import { NotebookManagement } from './functions/notebooks';
-import { SectionManagement } from './functions/sections';
-import { PageManagement } from './functions/pages';
+import { ClientSecretCredential } from "@azure/identity";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { NotebookManagement } from "./functions/notebooks";
+import { PageManagement } from "./functions/pages";
+import { SectionManagement } from "./functions/sections";
 
-export class OneNoteMCPServer extends MCPServer {
+export class OneNoteMCPServer extends McpServer {
   private credential: ClientSecretCredential;
 
   constructor() {
-    super();
+    super({
+      name: "AzureOneNoteMCP",
+      version: "1.0.0",
+    });
 
     const tenantId = process.env.AZURE_TENANT_ID;
     const clientId = process.env.AZURE_CLIENT_ID;
     const clientSecret = process.env.AZURE_CLIENT_SECRET;
 
     if (!tenantId || !clientId || !clientSecret) {
-      throw new Error('Azure credentials must be provided via environment variables');
+      throw new Error(
+        "Azure credentials must be provided via environment variables",
+      );
     }
 
     this.credential = new ClientSecretCredential(
       tenantId,
       clientId,
-      clientSecret
+      clientSecret,
     );
 
-    this.registerFunctions(new NotebookManagement(this.credential));
-    this.registerFunctions(new SectionManagement(this.credential));
-    this.registerFunctions(new PageManagement(this.credential));
+    new NotebookManagement(this, this.credential);
+    new PageManagement(this, this.credential);
+    // Instantiate SectionManagement, passing the server instance (this)
+    new SectionManagement(this, this.credential);
+  }
+
+  async run() {
+    const transport = new StdioServerTransport();
+    await this.server.connect(transport);
+    console.error("OneNote MCP server running on stdio");
   }
 }
 
-// Start server if run directly
-if (require.main === module) {
-  const server = new OneNoteMCPServer();
-  server.start();
-}
+const server = new OneNoteMCPServer();
+server.run().catch(console.error);

@@ -1,130 +1,206 @@
-import { MCPFunction, MCPFunctionGroup } from '@modelcontextprotocol/typescript-sdk';
-import { Client } from '@microsoft/microsoft-graph-client';
-import { TokenCredential } from '@azure/identity';
-import { Section, SectionCreateOptions } from '../types';
+import { TokenCredential } from "@azure/identity";
+import { Client } from "@microsoft/microsoft-graph-client";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { Section, SectionCreateOptions } from "../types";
 
-export class SectionManagement implements MCPFunctionGroup {
+export class SectionManagement {
   private client: Client;
+  private server: McpServer;
+  private credential: TokenCredential;
 
-  constructor(credential: TokenCredential) {
+  constructor(server: McpServer, credential: TokenCredential) {
+    this.server = server;
+    this.credential = credential;
     this.client = Client.init({
       authProvider: async (done) => {
         try {
-          const token = await credential.getToken('https://graph.microsoft.com/.default');
-          done(null, token?.token || '');
+          const token = await this.credential.getToken(
+            "https://graph.microsoft.com/.default",
+          );
+          done(null, token?.token || "");
         } catch (error) {
-          done(error as Error, '');
+          done(error as Error, "");
         }
-      }
+      },
     });
+    this.registerTools();
   }
 
-  @MCPFunction({
-    description: 'List sections in a notebook',
-    parameters: {
-      type: 'object',
-      properties: {
-        notebookId: { type: 'string', description: 'Notebook ID' }
+  private registerTools() {
+    this.server.tool(
+      "listSections",
+      "List sections within a specific OneNote notebook",
+      {
+        notebookId: z
+          .string()
+          .describe("The ID of the notebook containing the sections"),
       },
-      required: ['notebookId']
-    }
-  })
-  async listSections({ notebookId }: { notebookId: string }): Promise<Section[]> {
-    try {
-      const response = await this.client
-        .api(`/me/onenote/notebooks/${notebookId}/sections`)
-        .select('id,displayName,createdDateTime,lastModifiedDateTime,pagesUrl')
-        .get();
+      async ({
+        notebookId,
+      }: {
+        notebookId: string;
+      }): Promise<{
+        content: {
+          type: "resource";
+          resource: { mimeType: string; text: string };
+        }[];
+      }> => {
+        try {
+          const response = await this.client
+            .api(`/me/onenote/notebooks/${notebookId}/sections`)
+            .select(
+              "id,displayName,createdDateTime,lastModifiedDateTime,pagesUrl",
+            )
+            .get();
 
-      return response.value.map((section: any) => ({
-        id: section.id,
-        name: section.displayName,
-        createdTime: section.createdDateTime,
-        lastModifiedTime: section.lastModifiedDateTime,
-        pagesUrl: section.pagesUrl
-      }));
-    } catch (error) {
-      throw new Error(`Failed to list sections: ${error.message}`);
-    }
-  }
-
-  @MCPFunction({
-    description: 'Create new section',
-    parameters: {
-      type: 'object',
-      properties: {
-        name: { type: 'string', description: 'Section name' },
-        notebookId: { type: 'string', description: 'Notebook ID' }
+          const sections: Section[] = response.value.map((section: any) => ({
+            id: section.id,
+            name: section.displayName,
+            createdTime: section.createdDateTime,
+            lastModifiedTime: section.lastModifiedDateTime,
+            pagesUrl: section.pagesUrl,
+          }));
+          return {
+            content: [
+              {
+                type: "resource",
+                resource: {
+                  mimeType: "application/json",
+                  text: JSON.stringify(sections),
+                },
+              },
+            ],
+          };
+        } catch (error) {
+          throw new Error(
+            `Failed to list sections in notebook ${notebookId}: ${error.message}`,
+          );
+        }
       },
-      required: ['name', 'notebookId']
-    }
-  })
-  async createSection({ name, notebookId }: SectionCreateOptions): Promise<Section> {
-    try {
-      const section = await this.client
-        .api(`/me/onenote/notebooks/${notebookId}/sections`)
-        .post({
-          displayName: name
-        });
+    );
 
-      return {
-        id: section.id,
-        name: section.displayName,
-        createdTime: section.createdDateTime,
-        lastModifiedTime: section.lastModifiedDateTime,
-        pagesUrl: section.pagesUrl
-      };
-    } catch (error) {
-      throw new Error(`Failed to create section: ${error.message}`);
-    }
-  }
-
-  @MCPFunction({
-    description: 'Get section by ID',
-    parameters: {
-      type: 'object',
-      properties: {
-        id: { type: 'string', description: 'Section ID' }
+    this.server.tool(
+      "createSection",
+      "Create a new section within a OneNote notebook",
+      {
+        name: z.string().describe("The name for the new section"),
+        notebookId: z
+          .string()
+          .describe("The ID of the notebook where the section will be created"),
       },
-      required: ['id']
-    }
-  })
-  async getSection({ id }: { id: string }): Promise<Section> {
-    try {
-      const section = await this.client
-        .api(`/me/onenote/sections/${id}`)
-        .select('id,displayName,createdDateTime,lastModifiedDateTime,pagesUrl')
-        .get();
+      async ({
+        name,
+        notebookId,
+      }: SectionCreateOptions): Promise<{
+        content: {
+          type: "resource";
+          resource: { mimeType: string; text: string };
+        }[];
+      }> => {
+        try {
+          const section = await this.client
+            .api(`/me/onenote/notebooks/${notebookId}/sections`)
+            .post({
+              displayName: name,
+            });
 
-      return {
-        id: section.id,
-        name: section.displayName,
-        createdTime: section.createdDateTime,
-        lastModifiedTime: section.lastModifiedDateTime,
-        pagesUrl: section.pagesUrl
-      };
-    } catch (error) {
-      throw new Error(`Failed to get section ${id}: ${error.message}`);
-    }
-  }
-
-  @MCPFunction({
-    description: 'Delete section',
-    parameters: {
-      type: 'object',
-      properties: {
-        id: { type: 'string', description: 'Section ID' }
+          const createdSection: Section = {
+            id: section.id,
+            name: section.displayName,
+            createdTime: section.createdDateTime,
+            lastModifiedTime: section.lastModifiedDateTime,
+            pagesUrl: section.pagesUrl,
+          };
+          return {
+            content: [
+              {
+                type: "resource",
+                resource: {
+                  mimeType: "application/json",
+                  text: JSON.stringify(createdSection),
+                },
+              },
+            ],
+          };
+        } catch (error) {
+          throw new Error(
+            `Failed to create section in notebook ${notebookId}: ${error.message}`,
+          );
+        }
       },
-      required: ['id']
-    }
-  })
-  async deleteSection({ id }: { id: string }): Promise<void> {
-    try {
-      await this.client
-        .api(`/me/onenote/sections/${id}`)
-        .delete();
-    } catch (error) {
-      throw new Error(`Failed to delete section ${id}: ${error.message}`);
-    }
+    );
+
+    this.server.tool(
+      "getSection",
+      "Get details of a specific OneNote section by its ID",
+      {
+        id: z.string().describe("The ID of the section to retrieve"),
+      },
+      async ({
+        id,
+      }: {
+        id: string;
+      }): Promise<{
+        content: {
+          type: "resource";
+          resource: { mimeType: string; text: string };
+        }[];
+      }> => {
+        try {
+          const section = await this.client
+            .api(`/me/onenote/sections/${id}`)
+            .select(
+              "id,displayName,createdDateTime,lastModifiedDateTime,pagesUrl",
+            )
+            .get();
+
+          const resultSection: Section = {
+            id: section.id,
+            name: section.displayName,
+            createdTime: section.createdDateTime,
+            lastModifiedTime: section.lastModifiedDateTime,
+            pagesUrl: section.pagesUrl,
+          };
+          return {
+            content: [
+              {
+                type: "resource",
+                resource: {
+                  mimeType: "application/json",
+                  text: JSON.stringify(resultSection),
+                },
+              },
+            ],
+          };
+        } catch (error) {
+          throw new Error(`Failed to get section ${id}: ${error.message}`);
+        }
+      },
+    );
+
+    this.server.tool(
+      "deleteSection",
+      "Delete a specific OneNote section by its ID",
+      {
+        id: z.string().describe("The ID of the section to delete"),
+      },
+      async ({
+        id,
+      }: {
+        id: string;
+      }): Promise<{ content: { type: "text"; text: string }[] }> => {
+        try {
+          await this.client.api(`/me/onenote/sections/${id}`).delete();
+          return {
+            content: [
+              { type: "text", text: `Section ${id} deleted successfully.` },
+            ],
+          };
+        } catch (error) {
+          throw new Error(`Failed to delete section ${id}: ${error.message}`);
+        }
+      },
+    );
   }
 }
