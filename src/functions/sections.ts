@@ -1,6 +1,7 @@
 import { TokenCredential } from "@azure/identity";
 import { Client } from "@microsoft/microsoft-graph-client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { getErrorMessage } from "src/utils/error"; // Import getErrorMessage
 import { z } from "zod";
 import { Section, SectionCreateOptions } from "../types";
 
@@ -43,12 +44,13 @@ export class SectionManagement {
       }): Promise<{
         content: {
           type: "resource";
-          resource: { mimeType: string; text: string };
+          resource: { mimeType: string; text: string; uri: string }; // Added uri
         }[];
       }> => {
+        const uri = `/me/onenote/notebooks/${notebookId}/sections`; // Define uri
         try {
           const response = await this.client
-            .api(`/me/onenote/notebooks/${notebookId}/sections`)
+            .api(uri) // Use uri
             .select(
               "id,displayName,createdDateTime,lastModifiedDateTime,pagesUrl",
             )
@@ -68,13 +70,16 @@ export class SectionManagement {
                 resource: {
                   mimeType: "application/json",
                   text: JSON.stringify(sections),
+                  uri: uri, // Add uri to response
                 },
               },
             ],
           };
         } catch (error) {
           throw new Error(
-            `Failed to list sections in notebook ${notebookId}: ${error.message}`,
+            `Failed to list sections in notebook ${notebookId}: ${getErrorMessage(
+              error,
+            )}`, // Use getErrorMessage
           );
         }
       },
@@ -95,15 +100,15 @@ export class SectionManagement {
       }: SectionCreateOptions): Promise<{
         content: {
           type: "resource";
-          resource: { mimeType: string; text: string };
+          resource: { mimeType: string; text: string; uri: string }; // Added uri
         }[];
       }> => {
+        const baseUri = `/me/onenote/notebooks/${notebookId}/sections`; // Define base uri
         try {
-          const section = await this.client
-            .api(`/me/onenote/notebooks/${notebookId}/sections`)
-            .post({
-              displayName: name,
-            });
+          const section = await this.client.api(baseUri).post({
+            // Use base uri
+            displayName: name,
+          });
 
           const createdSection: Section = {
             id: section.id,
@@ -112,6 +117,7 @@ export class SectionManagement {
             lastModifiedTime: section.lastModifiedDateTime,
             pagesUrl: section.pagesUrl,
           };
+          const sectionUri = `/me/onenote/sections/${section.id}`; // Define specific section uri
           return {
             content: [
               {
@@ -119,13 +125,16 @@ export class SectionManagement {
                 resource: {
                   mimeType: "application/json",
                   text: JSON.stringify(createdSection),
+                  uri: sectionUri, // Add uri to response
                 },
               },
             ],
           };
         } catch (error) {
           throw new Error(
-            `Failed to create section in notebook ${notebookId}: ${error.message}`,
+            `Failed to create section in notebook ${notebookId}: ${getErrorMessage(
+              error,
+            )}`, // Use getErrorMessage
           );
         }
       },
@@ -144,12 +153,13 @@ export class SectionManagement {
       }): Promise<{
         content: {
           type: "resource";
-          resource: { mimeType: string; text: string };
+          resource: { mimeType: string; text: string; uri: string }; // Added uri
         }[];
       }> => {
+        const uri = `/me/onenote/sections/${id}`; // Define uri
         try {
           const section = await this.client
-            .api(`/me/onenote/sections/${id}`)
+            .api(uri) // Use uri
             .select(
               "id,displayName,createdDateTime,lastModifiedDateTime,pagesUrl",
             )
@@ -169,12 +179,15 @@ export class SectionManagement {
                 resource: {
                   mimeType: "application/json",
                   text: JSON.stringify(resultSection),
+                  uri: uri, // Add uri to response
                 },
               },
             ],
           };
         } catch (error) {
-          throw new Error(`Failed to get section ${id}: ${error.message}`);
+          throw new Error(
+            `Failed to get section ${id}: ${getErrorMessage(error)}`,
+          ); // Use getErrorMessage
         }
       },
     );
@@ -198,7 +211,9 @@ export class SectionManagement {
             ],
           };
         } catch (error) {
-          throw new Error(`Failed to delete section ${id}: ${error.message}`);
+          throw new Error(
+            `Failed to delete section ${id}: ${getErrorMessage(error)}`,
+          ); // Use getErrorMessage
         }
       },
     );

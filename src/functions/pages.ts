@@ -1,6 +1,7 @@
 import { TokenCredential } from "@azure/identity";
 import { Client } from "@microsoft/microsoft-graph-client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { getErrorMessage } from "src/utils/error"; // Import getErrorMessage
 import { z } from "zod";
 import { Page, PageCreateOptions, SearchOptions } from "../types";
 
@@ -43,12 +44,13 @@ export class PageManagement {
       }): Promise<{
         content: {
           type: "resource";
-          resource: { mimeType: string; text: string };
+          resource: { mimeType: string; text: string; uri: string }; // Added uri
         }[];
       }> => {
+        const uri = `/me/onenote/sections/${sectionId}/pages`; // Define uri
         try {
           const response = await this.client
-            .api(`/me/onenote/sections/${sectionId}/pages`)
+            .api(uri) // Use uri
             .select("id,title,createdDateTime,lastModifiedDateTime,contentUrl")
             .get();
 
@@ -66,13 +68,16 @@ export class PageManagement {
                 resource: {
                   mimeType: "application/json",
                   text: JSON.stringify(pages),
+                  uri: uri, // Add uri to response
                 },
               },
             ],
           };
         } catch (error) {
           throw new Error(
-            `Failed to list pages in section ${sectionId}: ${error.message}`,
+            `Failed to list pages in section ${sectionId}: ${getErrorMessage(
+              error,
+            )}`, // Use getErrorMessage
           );
         }
       },
@@ -99,7 +104,7 @@ export class PageManagement {
       }: SearchOptions): Promise<{
         content: {
           type: "resource";
-          resource: { mimeType: string; text: string };
+          resource: { mimeType: string; text: string; uri: string }; // Added uri
         }[];
       }> => {
         try {
@@ -109,9 +114,10 @@ export class PageManagement {
           } else if (notebookId) {
             searchEndpoint = `/me/onenote/notebooks/${notebookId}/pages`;
           }
+          const uri = `${searchEndpoint}?$filter=contains(title,'${query}')`; // Define uri
 
           const response = await this.client
-            .api(searchEndpoint)
+            .api(searchEndpoint) // Use base endpoint for API call
             .filter(`contains(title,'${query}')`)
             .select("id,title,createdDateTime,lastModifiedDateTime,contentUrl")
             .get();
@@ -130,12 +136,13 @@ export class PageManagement {
                 resource: {
                   mimeType: "application/json",
                   text: JSON.stringify(pages),
+                  uri: uri, // Add uri with filter to response
                 },
               },
             ],
           };
         } catch (error) {
-          throw new Error(`Failed to search pages: ${error.message}`);
+          throw new Error(`Failed to search pages: ${getErrorMessage(error)}`); // Use getErrorMessage
         }
       },
     );
@@ -157,9 +164,10 @@ export class PageManagement {
       }: PageCreateOptions): Promise<{
         content: {
           type: "resource";
-          resource: { mimeType: string; text: string };
+          resource: { mimeType: string; text: string; uri: string }; // Added uri
         }[];
       }> => {
+        const baseUri = `/me/onenote/sections/${sectionId}/pages`; // Define base uri
         try {
           const htmlContent = `<!DOCTYPE html>
             <html>
@@ -172,7 +180,7 @@ export class PageManagement {
             </html>`;
 
           const page = await this.client
-            .api(`/me/onenote/sections/${sectionId}/pages`)
+            .api(baseUri) // Use base uri
             .header("Content-Type", "application/xhtml+xml")
             .post(htmlContent);
 
@@ -183,6 +191,7 @@ export class PageManagement {
             lastModifiedTime: page.lastModifiedDateTime,
             contentUrl: page.contentUrl,
           };
+          const pageUri = `/me/onenote/pages/${page.id}`; // Define specific page uri
           return {
             content: [
               {
@@ -190,13 +199,16 @@ export class PageManagement {
                 resource: {
                   mimeType: "application/json",
                   text: JSON.stringify(createdPage),
+                  uri: pageUri, // Add uri to response
                 },
               },
             ],
           };
         } catch (error) {
           throw new Error(
-            `Failed to create page in section ${sectionId}: ${error.message}`,
+            `Failed to create page in section ${sectionId}: ${getErrorMessage(
+              error,
+            )}`, // Use getErrorMessage
           );
         }
       },
@@ -215,9 +227,10 @@ export class PageManagement {
       }): Promise<{
         content: {
           type: "resource";
-          resource: { mimeType: string; text: string };
+          resource: { mimeType: string; text: string; uri: string }; // Added uri
         }[];
       }> => {
+        const uri = `/me/onenote/pages/${id}/content`; // Define uri
         try {
           const pageMeta = await this.client
             .api(`/me/onenote/pages/${id}`)
@@ -225,7 +238,7 @@ export class PageManagement {
             .get();
 
           const contentStream = await this.client
-            .api(`/me/onenote/pages/${id}/content`)
+            .api(uri) // Use uri
             .get();
 
           let pageContent = contentStream;
@@ -254,13 +267,14 @@ export class PageManagement {
                 resource: {
                   mimeType: "text/html",
                   text: resultPage.content ?? "",
+                  uri: uri, // Add uri to response
                 },
               },
             ],
           };
         } catch (error) {
           throw new Error(
-            `Failed to get content for page ${id}: ${error.message}`,
+            `Failed to get content for page ${id}: ${getErrorMessage(error)}`, // Use getErrorMessage
           );
         }
       },
@@ -307,7 +321,9 @@ export class PageManagement {
             ],
           };
         } catch (error) {
-          throw new Error(`Failed to update page ${id}: ${error.message}`);
+          throw new Error(
+            `Failed to update page ${id}: ${getErrorMessage(error)}`,
+          ); // Use getErrorMessage
         }
       },
     );
@@ -331,7 +347,9 @@ export class PageManagement {
             ],
           };
         } catch (error) {
-          throw new Error(`Failed to delete page ${id}: ${error.message}`);
+          throw new Error(
+            `Failed to delete page ${id}: ${getErrorMessage(error)}`,
+          ); // Use getErrorMessage
         }
       },
     );
