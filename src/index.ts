@@ -1,4 +1,8 @@
-import { ClientSecretCredential } from "@azure/identity";
+import {
+  ClientSecretCredential,
+  DeviceCodeCredential,
+  DeviceCodeInfo,
+} from "@azure/identity";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { NotebookManagement } from "./functions/notebooks";
@@ -9,6 +13,7 @@ require("dotenv").config(); // Load environment variables from .env file
 
 export class OneNoteMCPServer extends McpServer {
   private credential: ClientSecretCredential;
+  private deviceCodeCredential: DeviceCodeCredential | undefined = undefined;
 
   constructor() {
     super({
@@ -32,7 +37,19 @@ export class OneNoteMCPServer extends McpServer {
       clientSecret,
     );
 
-    new NotebookManagement(this, this.credential);
+    this.deviceCodeCredential = new DeviceCodeCredential({
+      clientId: clientId,
+      tenantId: "consumers",
+      userPromptCallback: (info: DeviceCodeInfo) => {
+        // Display the device code message to
+        // the user. This tells them
+        // where to go to sign in and provides the
+        // code to use.
+        console.log(info.message);
+      },
+    });
+
+    new NotebookManagement(this, this.deviceCodeCredential);
     new PageManagement(this, this.credential);
     new SectionManagement(this, this.credential);
   }

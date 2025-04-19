@@ -1,5 +1,6 @@
 import { TokenCredential } from "@azure/identity";
 import { Client } from "@microsoft/microsoft-graph-client";
+import { TokenCredentialAuthenticationProvider } from "@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"; // Added import
 import { z } from "zod"; // Added import
 import { Notebook, NotebookCreateOptions } from "../types";
@@ -8,23 +9,17 @@ import { getErrorMessage } from "../utils/error";
 export class NotebookManagement {
   private client: Client;
   private server: McpServer; // Added server property
-  private credential: TokenCredential; // Added credential property
 
   constructor(server: McpServer, credential: TokenCredential) {
     // Updated constructor signature
     this.server = server; // Store server instance
-    this.credential = credential; // Store credential instance
-    this.client = Client.init({
-      authProvider: async (done) => {
-        try {
-          const token = await this.credential.getToken(
-            "https://graph.microsoft.com/.default",
-          );
-          done(null, token?.token || "");
-        } catch (error) {
-          done(error as Error, "");
-        }
-      },
+
+    const authProvider = new TokenCredentialAuthenticationProvider(credential, {
+      scopes: ["https://graph.microsoft.com/.default"],
+    });
+
+    this.client = Client.initWithMiddleware({
+      authProvider,
     });
 
     this.registerTools(); // Call registration method
