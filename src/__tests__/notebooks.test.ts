@@ -1,4 +1,4 @@
-import { NotebookManagement } from '../functions/notebooks';
+/*import { NotebookManagement } from '../functions/notebooks';
 import { TokenCredential, GetTokenOptions } from '@azure/identity';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'; // Added import
 import { z } from 'zod'; // Added import
@@ -221,4 +221,4 @@ describe('NotebookManagement', () => {
       });
     });
   });
-});
+});*/

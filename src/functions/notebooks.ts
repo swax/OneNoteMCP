@@ -1,220 +1,195 @@
-import { TokenCredential } from "@azure/identity";
 import { Client } from "@microsoft/microsoft-graph-client";
-import { TokenCredentialAuthenticationProvider } from "@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"; // Added import
-import { z } from "zod"; // Added import
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
 import { Notebook, NotebookCreateOptions } from "../types";
 import { getErrorMessage } from "../utils/error";
 
-export class NotebookManagement {
-  private client: Client;
-  private server: McpServer; // Added server property
+export function registerNotebookTools(
+  mcpServer: McpServer,
+  azureClient: Client,
+) {
+  mcpServer.tool(
+    "listNotebooks",
+    "List all OneNote notebooks",
+    {}, // No input parameters
+    async (): Promise<{
+      content: {
+        type: "resource";
+        resource: { mimeType: string; text: string; uri: string };
+      }[];
+    }> => {
+      const uri = "/me/onenote/notebooks";
+      try {
+        const response = await azureClient
+          .api(uri)
+          .select(
+            "id,displayName,createdDateTime,lastModifiedDateTime,sectionsUrl",
+          )
+          .get();
 
-  constructor(server: McpServer, credential: TokenCredential) {
-    // Updated constructor signature
-    this.server = server; // Store server instance
-
-    const authProvider = new TokenCredentialAuthenticationProvider(credential, {
-      scopes: ["https://graph.microsoft.com/.default"],
-    });
-
-    this.client = Client.initWithMiddleware({
-      authProvider,
-    });
-
-    this.registerTools(); // Call registration method
-  }
-
-  // Method to register tools
-  private registerTools() {
-    this.server.tool(
-      "listNotebooks",
-      "List all OneNote notebooks",
-      {}, // No input parameters
-      async (): Promise<{
-        content: {
-          type: "resource";
-          resource: { mimeType: string; text: string; uri: string };
-        }[];
-      }> => {
-        const uri = "/me/onenote/notebooks"; // Define uri
-        try {
-          const response = await this.client
-            .api(uri) // Use uri
-            .select(
-              "id,displayName,createdDateTime,lastModifiedDateTime,sectionsUrl",
-            )
-            .get();
-
-          const notebooks: Notebook[] = response.value.map((notebook: any) => ({
-            id: notebook.id,
-            name: notebook.displayName,
-            createdTime: notebook.createdDateTime,
-            lastModifiedTime: notebook.lastModifiedDateTime,
-            sectionsUrl: notebook.sectionsUrl,
-          }));
-          return {
-            content: [
-              {
-                type: "resource",
-                resource: {
-                  mimeType: "application/json",
-                  text: JSON.stringify(notebooks),
-                  uri: uri, // Use uri in response
-                },
+        const notebooks: Notebook[] = response.value.map((notebook: any) => ({
+          id: notebook.id,
+          name: notebook.displayName,
+          createdTime: notebook.createdDateTime,
+          lastModifiedTime: notebook.lastModifiedDateTime,
+          sectionsUrl: notebook.sectionsUrl,
+        }));
+        return {
+          content: [
+            {
+              type: "resource",
+              resource: {
+                mimeType: "application/json",
+                text: JSON.stringify(notebooks),
+                uri,
               },
-            ],
-          };
-        } catch (error) {
-          throw new Error(
-            `Failed to list notebooks: ${getErrorMessage(error)}`,
-          ); // Use utility function
-        }
-      },
-    );
+            },
+          ],
+        };
+      } catch (error) {
+        throw new Error(`Failed to list notebooks: ${getErrorMessage(error)}`);
+      }
+    },
+  );
 
-    this.server.tool(
-      "getNotebook",
-      "Get a specific OneNote notebook by its ID",
-      {
-        id: z.string().describe("The ID of the notebook to retrieve"),
-      },
-      async ({
-        id,
-      }: {
-        id: string;
-      }): Promise<{
-        content: {
-          type: "resource";
-          resource: { mimeType: string; text: string; uri: string };
-        }[];
-      }> => {
-        const uri = `/me/onenote/notebooks/${id}`; // Define uri
-        try {
-          const notebook = await this.client
-            .api(uri) // Use uri
-            .select(
-              "id,displayName,createdDateTime,lastModifiedDateTime,sectionsUrl",
-            )
-            .get();
+  mcpServer.tool(
+    "getNotebook",
+    "Get a specific OneNote notebook by its ID",
+    {
+      id: z.string().describe("The ID of the notebook to retrieve"),
+    },
+    async ({
+      id,
+    }: {
+      id: string;
+    }): Promise<{
+      content: {
+        type: "resource";
+        resource: { mimeType: string; text: string; uri: string };
+      }[];
+    }> => {
+      const uri = `/me/onenote/notebooks/${id}`;
+      try {
+        const notebook = await azureClient
+          .api(uri)
+          .select(
+            "id,displayName,createdDateTime,lastModifiedDateTime,sectionsUrl",
+          )
+          .get();
 
-          const result: Notebook = {
-            id: notebook.id,
-            name: notebook.displayName,
-            createdTime: notebook.createdDateTime,
-            lastModifiedTime: notebook.lastModifiedDateTime,
-            sectionsUrl: notebook.sectionsUrl,
-          };
-          return {
-            content: [
-              {
-                type: "resource",
-                resource: {
-                  mimeType: "application/json",
-                  text: JSON.stringify(result),
-                  uri: uri, // Use uri in response
-                },
+        const result: Notebook = {
+          id: notebook.id,
+          name: notebook.displayName,
+          createdTime: notebook.createdDateTime,
+          lastModifiedTime: notebook.lastModifiedDateTime,
+          sectionsUrl: notebook.sectionsUrl,
+        };
+        return {
+          content: [
+            {
+              type: "resource",
+              resource: {
+                mimeType: "application/json",
+                text: JSON.stringify(result),
+                uri,
               },
-            ],
-          };
-        } catch (error) {
-          throw new Error(
-            `Failed to get notebook ${id}: ${getErrorMessage(error)}`,
-          ); // Use utility function
+            },
+          ],
+        };
+      } catch (error) {
+        throw new Error(
+          `Failed to get notebook ${id}: ${getErrorMessage(error)}`,
+        );
+      }
+    },
+  );
+
+  mcpServer.tool(
+    "createNotebook",
+    "Create a new OneNote notebook",
+    {
+      name: z.string().describe("The name for the new notebook"),
+      sectionName: z
+        .string()
+        .optional()
+        .describe(
+          "Optional name for an initial section within the new notebook",
+        ),
+    },
+    async ({
+      name,
+      sectionName,
+    }: NotebookCreateOptions): Promise<{
+      content: {
+        type: "resource";
+        resource: { mimeType: string; text: string; uri: string };
+      }[];
+    }> => {
+      const baseUri = "/me/onenote/notebooks";
+      try {
+        const notebook = await azureClient.api(baseUri).post({
+          displayName: name,
+        });
+
+        if (sectionName) {
+          await azureClient
+            .api(`/me/onenote/notebooks/${notebook.id}/sections`)
+            .post({
+              displayName: sectionName,
+            });
         }
-      },
-    );
 
-    this.server.tool(
-      "createNotebook",
-      "Create a new OneNote notebook",
-      {
-        name: z.string().describe("The name for the new notebook"),
-        sectionName: z
-          .string()
-          .optional()
-          .describe(
-            "Optional name for an initial section within the new notebook",
-          ),
-      },
-      async ({
-        name,
-        sectionName,
-      }: NotebookCreateOptions): Promise<{
-        content: {
-          type: "resource";
-          resource: { mimeType: string; text: string; uri: string };
-        }[];
-      }> => {
-        const baseUri = "/me/onenote/notebooks"; // Define base uri
-        try {
-          const notebook = await this.client.api(baseUri).post({
-            // Use base uri
-            displayName: name,
-          });
-
-          if (sectionName) {
-            await this.client
-              .api(`/me/onenote/notebooks/${notebook.id}/sections`)
-              .post({
-                displayName: sectionName,
-              });
-          }
-
-          // Re-fetch the notebook to get all properties including sectionsUrl if needed, or construct manually
-          const createdNotebook: Notebook = {
-            id: notebook.id,
-            name: notebook.displayName,
-            createdTime: notebook.createdDateTime,
-            lastModifiedTime: notebook.lastModifiedDateTime,
-            sectionsUrl: notebook.sectionsUrl, // Note: sectionsUrl might not be immediately available post-creation depending on API behavior
-          };
-          const notebookUri = `/me/onenote/notebooks/${notebook.id}`; // Define specific notebook uri
-          return {
-            content: [
-              {
-                type: "resource",
-                resource: {
-                  mimeType: "application/json",
-                  text: JSON.stringify(createdNotebook),
-                  uri: notebookUri, // Use specific uri in response
-                },
+        // Re-fetch the notebook to get all properties including sectionsUrl if needed, or construct manually
+        const createdNotebook: Notebook = {
+          id: notebook.id,
+          name: notebook.displayName,
+          createdTime: notebook.createdDateTime,
+          lastModifiedTime: notebook.lastModifiedDateTime,
+          sectionsUrl: notebook.sectionsUrl, // Note: sectionsUrl might not be immediately available post-creation depending on API behavior
+        };
+        const notebookUri = `/me/onenote/notebooks/${notebook.id}`;
+        return {
+          content: [
+            {
+              type: "resource",
+              resource: {
+                mimeType: "application/json",
+                text: JSON.stringify(createdNotebook),
+                uri: notebookUri,
               },
-            ],
-          };
-        } catch (error) {
-          throw new Error(
-            `Failed to create notebook: ${getErrorMessage(error)}`,
-          ); // Use utility function
-        }
-      },
-    );
+            },
+          ],
+        };
+      } catch (error) {
+        throw new Error(`Failed to create notebook: ${getErrorMessage(error)}`);
+      }
+    },
+  );
 
-    this.server.tool(
-      "deleteNotebook",
-      "Delete a OneNote notebook by its ID",
-      {
-        id: z.string().describe("The ID of the notebook to delete"),
-      },
-      async ({
-        id,
-      }: {
-        id: string;
-      }): Promise<{ content: { type: "text"; text: string }[] }> => {
-        const uri = `/me/onenote/notebooks/${id}`; // Define uri
-        try {
-          await this.client.api(uri).delete(); // Use uri
-          return {
-            content: [
-              { type: "text", text: `Notebook ${id} deleted successfully.` },
-            ],
-          };
-        } catch (error) {
-          throw new Error(
-            `Failed to delete notebook ${id}: ${getErrorMessage(error)}`,
-          ); // Use utility function
-        }
-      },
-    );
-  }
+  mcpServer.tool(
+    "deleteNotebook",
+    "Delete a OneNote notebook by its ID",
+    {
+      id: z.string().describe("The ID of the notebook to delete"),
+    },
+    async ({
+      id,
+    }: {
+      id: string;
+    }): Promise<{ content: { type: "text"; text: string }[] }> => {
+      const uri = `/me/onenote/notebooks/${id}`;
+      try {
+        await azureClient.api(uri).delete();
+        return {
+          content: [
+            { type: "text", text: `Notebook ${id} deleted successfully.` },
+          ],
+        };
+      } catch (error) {
+        throw new Error(
+          `Failed to delete notebook ${id}: ${getErrorMessage(error)}`,
+        );
+      }
+    },
+  );
 }
