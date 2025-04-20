@@ -19,6 +19,7 @@ const mcpServer = new McpServer({
 });
 
 // Set up the Azure credentials
+const tenantId = process.env.AZURE_TENANT_ID; // Optional
 const clientId = process.env.AZURE_CLIENT_ID;
 const clientSecret = process.env.AZURE_CLIENT_SECRET;
 
@@ -32,10 +33,9 @@ useIdentityPlugin(cachePersistencePlugin);
 
 const deviceCodeCredential = new DeviceCodeCredential({
   clientId,
-  tenantId: "consumers",
+  tenantId: tenantId || "consumers",
   tokenCachePersistenceOptions: {
     enabled: true,
-    name: "onenote_mcp_auth_cache",
   },
   authenticationRecord: readAuthRecordCache(),
 });

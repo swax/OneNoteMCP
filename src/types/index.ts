@@ -43,5 +43,5 @@ export interface SearchOptions {
   query: string;
   notebookId?: string;
   sectionId?: string;
-  type?: 'pages' | 'notebooks' | 'sections';
+  type?: "pages" | "notebooks" | "sections";
 }

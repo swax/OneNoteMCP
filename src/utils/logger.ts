@@ -1,8 +1,8 @@
 export enum LogLevel {
-  DEBUG = 'DEBUG',
-  INFO = 'INFO',
-  WARN = 'WARN',
-  ERROR = 'ERROR'
+  DEBUG = "DEBUG",
+  INFO = "INFO",
+  WARN = "WARN",
+  ERROR = "ERROR",
 }
 
 export interface LogMeta {
@@ -26,7 +26,7 @@ export class Logger {
       timestamp,
       level,
       message,
-      ...meta
+      ...meta,
     };
 
     // Log to console with appropriate level

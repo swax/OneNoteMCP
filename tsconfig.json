@@ -8,7 +8,7 @@
 
     /* Modules */
     "rootDir": "./src",
-    "outDir": "./build",
+    "outDir": "./dist",
     "module": "NodeNext",
 
     /* Interop Constraints */
