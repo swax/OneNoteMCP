@@ -1,12 +1,15 @@
 import { DeviceCodeCredential, useIdentityPlugin } from "@azure/identity";
-import { cachePersistencePlugin } from "@azure/identity-cache-persistence";
 import { Client } from "@microsoft/microsoft-graph-client";
 import { TokenCredentialAuthenticationProvider } from "@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { registerNotebookTools } from "./functions/notebooks";
-import { registerPageTools } from "./functions/pages";
-import { readAuthRecordCache, writeAuthRecordCache } from "./utils/authCache";
+import { registerNotebookTools } from "./functions/notebooks.js";
+import { registerPageTools } from "./functions/pages.js";
+import {
+  readAuthRecordCache,
+  writeAuthRecordCache,
+} from "./utils/authRecordCache.js";
+import { cachePersistencePlugin } from "./utils/tokenCachePlugin.js";
 
 require("dotenv").config(); // Load environment variables from .env file
 
@@ -32,6 +35,7 @@ const deviceCodeCredential = new DeviceCodeCredential({
   tenantId: "consumers",
   tokenCachePersistenceOptions: {
     enabled: true,
+    name: "onenote_mcp_auth_cache",
   },
   authenticationRecord: readAuthRecordCache(),
 });

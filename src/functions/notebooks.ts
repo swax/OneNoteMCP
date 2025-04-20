@@ -1,6 +1,6 @@
 import { Client } from "@microsoft/microsoft-graph-client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
+import z from "zod";
 import { Notebook, NotebookCreateOptions } from "../types";
 import { getErrorMessage } from "../utils/error";
 

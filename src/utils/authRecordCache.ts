@@ -9,10 +9,10 @@ export function readAuthRecordCache() {
       const record = JSON.parse(
         fs.readFileSync(authenticationRecordPath, "utf-8"),
       );
-      console.log("Loaded cached authentication record");
+      console.log("Loaded authentication record");
       return record;
     } catch (error) {
-      console.error("Failed to load cached authentication record:", error);
+      console.error("Failed to load authentication record:", error);
       // Optionally delete the corrupted file
       // fs.unlinkSync(authenticationRecordPath);
     }
@@ -26,5 +26,5 @@ export function writeAuthRecordCache(record: AuthenticationRecord) {
   }
 
   fs.writeFileSync(authenticationRecordPath, JSON.stringify(record));
-  console.log("Authenticated and cached successfully");
+  console.log("Saved authentication record");
 }
