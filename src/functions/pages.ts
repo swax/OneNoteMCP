@@ -217,14 +217,21 @@ export function registerPageTools(mcpServer: McpServer, azureClient: Client) {
           .api(uri) // Use uri
           .get();
 
-        let pageContent = contentStream;
-        if (typeof contentStream !== "string") {
-          pageContent = await new Promise((resolve, reject) => {
-            let data = "";
-            contentStream.on("data", (chunk: any) => (data += chunk));
-            contentStream.on("end", () => resolve(data));
-            contentStream.on("error", (err: any) => reject(err));
-          });
+        let pageContent = "";
+        if (typeof contentStream === "string") {
+          pageContent = contentStream;
+        } else if (contentStream instanceof ReadableStream) {
+          const reader = contentStream.getReader();
+          const decoder = new TextDecoder("utf-8");
+          let result = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            result += decoder.decode(value, { stream: true });
+          }
+          pageContent = result;
+        } else {
+          pageContent = `Unknown content type: ${typeof contentStream}`;
         }
 
         const resultPage: Page = {
@@ -232,7 +239,7 @@ export function registerPageTools(mcpServer: McpServer, azureClient: Client) {
           title: pageMeta.title,
           createdTime: pageMeta.createdDateTime,
           lastModifiedTime: pageMeta.lastModifiedDateTime,
-          content: pageContent as string,
+          content: pageContent,
           contentUrl: pageMeta.contentUrl,
         };
 

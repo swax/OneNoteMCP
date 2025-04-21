@@ -10,6 +10,8 @@ if (!cacheDir) {
 
 type fileNames = "authentication-record" | "token-cache";
 
+// Use error logs because it won't interfere with standard output, and it'll show up in the claude log
+
 export function readJsonCache(fileName: fileNames) {
   const filePath = `${cacheDir}/${fileName}.json`;
 
