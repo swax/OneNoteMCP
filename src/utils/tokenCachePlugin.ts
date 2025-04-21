@@ -7,9 +7,7 @@
 
 import { IdentityPlugin, TokenCachePersistenceOptions } from "@azure/identity";
 import { ICachePlugin, TokenCacheContext } from "@azure/msal-node";
-import fs from "fs";
-
-const tokenCachePath = ".cache/token-cache.json";
+import { readJsonCache, writeJsonCache } from "./jsonCache";
 
 interface CachePluginControl {
   setPersistence(
@@ -23,34 +21,20 @@ interface AzurePluginContext {
   cachePluginControl: CachePluginControl;
 }
 
-// Mock implementation for createPersistenceCachePlugin
 const createPersistenceCachePlugin = async (
   _options?: TokenCachePersistenceOptions,
 ): Promise<ICachePlugin> => {
   return {
     async beforeCacheAccess(cacheContext: TokenCacheContext): Promise<void> {
-      if (fs.existsSync(tokenCachePath)) {
-        try {
-          const cacheData = fs.readFileSync(tokenCachePath, "utf-8");
-          cacheContext.tokenCache.deserialize(cacheData);
-          console.log("Loaded token cache");
-        } catch (error) {
-          console.error("Failed to load token cache:", error);
-          // Optionally delete the corrupted file
-          // fs.unlinkSync(authenticationRecordPath);
-        }
+      const tokenCache = readJsonCache("token-cache");
+      if (tokenCache) {
+        cacheContext.tokenCache.deserialize(tokenCache);
       }
-      await Promise.resolve();
     },
     async afterCacheAccess(cacheContext: TokenCacheContext): Promise<void> {
       // Save cache data if it has changed
       if (cacheContext.cacheHasChanged) {
-        if (!fs.existsSync(".cache")) {
-          fs.mkdirSync(".cache", { recursive: true });
-        }
-
-        fs.writeFileSync(tokenCachePath, cacheContext.tokenCache.serialize());
-        console.log("Saved token cache");
+        writeJsonCache("token-cache", cacheContext.tokenCache.serialize());
       }
       await Promise.resolve();
     },

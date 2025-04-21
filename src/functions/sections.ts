@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Section, SectionCreateOptions } from "../types";
 import { getErrorMessage } from "../utils/error";
 
-export function registerPageTools(mcpServer: McpServer, azureClient: Client) {
+export function registerSectionTools(mcpServer: McpServer, azureClient: Client) {
   mcpServer.tool(
     "listSections",
     "List sections within a specific OneNote notebook",

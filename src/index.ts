@@ -5,10 +5,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerNotebookTools } from "./functions/notebooks.js";
 import { registerPageTools } from "./functions/pages.js";
-import {
-  readAuthRecordCache,
-  writeAuthRecordCache,
-} from "./utils/authRecordCache.js";
+import { registerSectionTools } from "./functions/sections.js";
+import { readJsonCache, writeJsonCache } from "./utils/jsonCache.js";
 import { cachePersistencePlugin } from "./utils/tokenCachePlugin.js";
 
 require("dotenv").config(); // Load environment variables from .env file
@@ -31,13 +29,15 @@ if (!clientId || !clientSecret) {
 
 useIdentityPlugin(cachePersistencePlugin);
 
+const authRecordJson = readJsonCache("authentication-record");
+
 const deviceCodeCredential = new DeviceCodeCredential({
   clientId,
   tenantId: tenantId || "consumers",
   tokenCachePersistenceOptions: {
     enabled: true,
   },
-  authenticationRecord: readAuthRecordCache(),
+  authenticationRecord: authRecordJson ? JSON.parse(authRecordJson) : undefined,
 });
 
 const scope = "https://graph.microsoft.com/.default";
@@ -47,7 +47,7 @@ deviceCodeCredential
   .authenticate(scope)
   .then((record) => {
     if (record) {
-      writeAuthRecordCache(record);
+      writeJsonCache("authentication-record", JSON.stringify(record));
     }
   })
   .catch((error) => {
@@ -70,7 +70,7 @@ const azureClient = Client.initWithMiddleware({
 // Instantiate management classes with the McpServer instance and the client
 registerNotebookTools(mcpServer, azureClient);
 registerPageTools(mcpServer, azureClient);
-//new SectionManagement(mcpServer, client);
+registerSectionTools(mcpServer, azureClient);
 
 // Run the server
 async function runServer() {
