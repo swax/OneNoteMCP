@@ -1,102 +1,80 @@
-# OneNote MCP Server
-[![smithery badge](https://smithery.ai/badge/@modelcontextprotocol/server-onenote)](https://smithery.ai/server/@modelcontextprotocol/server-onenote)
+Forked from [ZubeidHendricks/azure-onenote-mcp-server](https://github.com/ZubeidHendricks/azure-onenote-mcp-server) see that page for the original README.md
 
-A Model Context Protocol (MCP) server implementation for Microsoft OneNote, enabling AI language models to interact with OneNote through a standardized interface.
+## About
 
-## Features
+An MCP for OneNote. Forked and revised extensively, now works with personal notebooks.
+Updated to the latest MCP API. Supports caching credentials.
 
-### Notebook Management
-- List all notebooks
-- Create new notebooks
-- Get notebook details
-- Delete notebooks
+## Improvements
 
-### Section Management
-- List sections in a notebook
-- Create new sections
-- Get section details
-- Delete sections
+### Functionality
 
-### Page Management
-- List pages in a section
-- Create new pages with HTML content
-- Read page content
-- Update page content
-- Delete pages
-- Search pages across notebooks
+- Fixed `getPageContent` functionality by implementing ReadableStream
+- Successfully implemented API calls against personal notebooks
+- Updated index and tools to use the latest MCP version
 
-## Installation
+### Code Architecture
 
-### Installing via Smithery
+- Simplified codebase by removing classes that weren't necessary
+- Many unnecessary files removed
 
-To install OneNote Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@modelcontextprotocol/server-onenote):
+### Authentication & Performance
 
-```bash
-npx -y @smithery/cli install @modelcontextprotocol/server-onenote --client claude
+- Implemented disk caching for authentication credentials
+- Updated package dependencies
+- Added dotenv support for direct testing capabilities
+
+## Azure App Registration
+
+1. Go to Azure Portal and navigate to App registrations
+2. Create a new registration for OneNoteMCP
+3. Add Microsoft Graph API permissions:
+   - Notes.Read
+   - Notes.Read.All
+   - (optionally add Notes.Write permissions, but there is a risk of losing your notes)
+4. Create a client secret
+5. Copy the client ID/secret for configuration
+6. In the manifest set `signInAudience` to `AzureADandPersonalMicrosoftAccount`
+
+## MCP Server setup
+
+Put the client ID/secret n your `.env` file locally as well as in Claude desktop.
+
+The `AUTH_CACHE_DIR` should be the directory where you want the generated API access token to be stored.
+
+```
+AZURE_CLIENT_ID=\
+AZURE_CLIENT_SECRET=
+AUTH_CACHE_DIR="C:\\git\\azure-onenote-mcp-server\\.cache"
 ```
 
-### Manual Installation
-```bash
-npm install -g mcp-server-onenote
+Run server manually first to generate the credentials that will be cached and used by
+Claude desktop when it runs the server later on.
+
+```
+npm install
+npm build
+npm run
 ```
 
-## Configuration
+You can test the API works by running this command directly once the server starts up and logs in.
 
-Set the following environment variables:
-- `AZURE_TENANT_ID`: Your Azure tenant ID
-- `AZURE_CLIENT_ID`: Your Azure application (client) ID
-- `AZURE_CLIENT_SECRET`: Your Azure client secret
+`{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "listNotebooks", "arguments": {}}}`
 
-## Using with MCP Client
+## Claude MCP config
 
-Add this to your MCP client configuration (e.g. Claude Desktop):
-
-```json
+```
 {
   "mcpServers": {
     "onenote": {
-      "command": "npx",
-      "args": ["-y", "mcp-server-onenote"],
+      "command": "node",
+      "args": ["C:\\git\\azure-onenote-mcp-server\\dist\\index.js"],
       "env": {
-        "AZURE_TENANT_ID": "<YOUR_TENANT_ID>",
-        "AZURE_CLIENT_ID": "<YOUR_CLIENT_ID>",
-        "AZURE_CLIENT_SECRET": "<YOUR_CLIENT_SECRET>"
+        "AZURE_CLIENT_ID": "...",
+        "AZURE_CLIENT_SECRET": "...",
+        "AUTH_CACHE_DIR": "C:\\git\\azure-onenote-mcp-server\\.cache"
       }
     }
   }
 }
 ```
-
-## Azure App Registration
-
-1. Go to Azure Portal and navigate to App registrations
-2. Create a new registration
-3. Add Microsoft Graph API permissions:
-   - Notes.ReadWrite.All
-   - Notes.Read.All
-4. Create a client secret
-5. Copy the tenant ID, client ID, and client secret for configuration
-
-## Development
-
-```bash
-# Install dependencies
-npm install
-
-# Run tests
-npm test
-
-# Build
-npm run build
-
-# Lint
-npm run lint
-```
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for information about contributing to this repository.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
