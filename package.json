@@ -15,23 +15,23 @@
     "updates:apply": "npm-check-updates -u && npm install"
   },
   "dependencies": {
-    "@azure/identity": "4.10.1",
+    "@azure/identity": "4.13.0",
     "@azure/identity-cache-persistence": "1.2.0",
     "@microsoft/microsoft-graph-client": "3.0.7",
-    "@modelcontextprotocol/sdk": "1.12.3",
-    "dotenv": "16.5.0",
-    "zod": "3.25.64"
+    "@modelcontextprotocol/sdk": "1.20.2",
+    "dotenv": "17.2.3",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
-    "@types/jest": "29.5.14",
-    "@types/node": "24.0.1",
-    "@typescript-eslint/eslint-plugin": "8.34.0",
-    "@typescript-eslint/parser": "8.34.0",
-    "eslint": "9.29.0",
-    "jest": "30.0.0",
-    "prettier": "3.5.3",
-    "ts-jest": "29.4.0",
-    "typescript": "5.8.3"
+    "@types/jest": "30.0.0",
+    "@types/node": "24.9.2",
+    "@typescript-eslint/eslint-plugin": "8.46.2",
+    "@typescript-eslint/parser": "8.46.2",
+    "eslint": "9.38.0",
+    "jest": "30.2.0",
+    "prettier": "3.6.2",
+    "ts-jest": "29.4.5",
+    "typescript": "5.9.3"
   },
   "keywords": [
     "mcp",

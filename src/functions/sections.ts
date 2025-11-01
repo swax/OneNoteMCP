@@ -1,6 +1,6 @@
 import { Client } from "@microsoft/microsoft-graph-client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
+import z from "zod";
 import { Section, SectionCreateOptions } from "../types";
 import { getErrorMessage } from "../utils/error";
 
@@ -13,16 +13,13 @@ export function registerSectionTools(mcpServer: McpServer, azureClient: Client) 
         .string()
         .describe("The ID of the notebook containing the sections"),
     },
-    async ({
-      notebookId,
-    }: {
-      notebookId: string;
-    }): Promise<{
+    async (args, extra): Promise<{
       content: {
         type: "resource";
         resource: { mimeType: string; text: string; uri: string };
       }[];
     }> => {
+      const { notebookId } = args;
       const uri = `/me/onenote/notebooks/${notebookId}/sections`;
       try {
         const response = await azureClient
@@ -70,15 +67,13 @@ export function registerSectionTools(mcpServer: McpServer, azureClient: Client) 
         .string()
         .describe("The ID of the notebook where the section will be created"),
     },
-    async ({
-      name,
-      notebookId,
-    }: SectionCreateOptions): Promise<{
+    async (args, extra): Promise<{
       content: {
         type: "resource";
         resource: { mimeType: string; text: string; uri: string };
       }[];
     }> => {
+      const { name, notebookId } = args;
       const baseUri = `/me/onenote/notebooks/${notebookId}/sections`;
       try {
         const section = await azureClient.api(baseUri).post({
@@ -121,16 +116,13 @@ export function registerSectionTools(mcpServer: McpServer, azureClient: Client) 
     {
       id: z.string().describe("The ID of the section to retrieve"),
     },
-    async ({
-      id,
-    }: {
-      id: string;
-    }): Promise<{
+    async (args, extra): Promise<{
       content: {
         type: "resource";
         resource: { mimeType: string; text: string; uri: string };
       }[];
     }> => {
+      const { id } = args;
       const uri = `/me/onenote/sections/${id}`;
       try {
         const section = await azureClient
@@ -173,11 +165,8 @@ export function registerSectionTools(mcpServer: McpServer, azureClient: Client) 
     {
       id: z.string().describe("The ID of the section to delete"),
     },
-    async ({
-      id,
-    }: {
-      id: string;
-    }): Promise<{ content: { type: "text"; text: string }[] }> => {
+    async (args, extra): Promise<{ content: { type: "text"; text: string }[] }> => {
+      const { id } = args;
       try {
         await azureClient.api(`/me/onenote/sections/${id}`).delete();
         return {

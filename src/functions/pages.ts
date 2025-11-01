@@ -1,6 +1,6 @@
 import { Client } from "@microsoft/microsoft-graph-client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
+import z from "zod";
 import { Page, PageCreateOptions, SearchOptions } from "../types";
 import { getErrorMessage } from "../utils/error";
 
@@ -13,16 +13,13 @@ export function registerPageTools(mcpServer: McpServer, azureClient: Client) {
         .string()
         .describe("The ID of the section containing the pages"),
     },
-    async ({
-      sectionId,
-    }: {
-      sectionId: string;
-    }): Promise<{
+    async (args, extra): Promise<{
       content: {
         type: "resource";
         resource: { mimeType: string; text: string; uri: string }; // Added uri
       }[];
     }> => {
+      const { sectionId } = args;
       const uri = `/me/onenote/sections/${sectionId}/pages`; // Define uri
       try {
         const response = await azureClient
@@ -73,16 +70,13 @@ export function registerPageTools(mcpServer: McpServer, azureClient: Client) {
         .optional()
         .describe("Optional section ID to limit search scope"),
     },
-    async ({
-      query,
-      notebookId,
-      sectionId,
-    }: SearchOptions): Promise<{
+    async (args, extra): Promise<{
       content: {
         type: "resource";
         resource: { mimeType: string; text: string; uri: string }; // Added uri
       }[];
     }> => {
+      const { query, notebookId, sectionId } = args;
       try {
         let searchEndpoint = "/me/onenote/pages";
         if (sectionId) {
@@ -133,16 +127,13 @@ export function registerPageTools(mcpServer: McpServer, azureClient: Client) {
         .string()
         .describe("The ID of the section where the page will be created"),
     },
-    async ({
-      title,
-      content,
-      sectionId,
-    }: PageCreateOptions): Promise<{
+    async (args, extra): Promise<{
       content: {
         type: "resource";
         resource: { mimeType: string; text: string; uri: string }; // Added uri
       }[];
     }> => {
+      const { title, content, sectionId } = args;
       const baseUri = `/me/onenote/sections/${sectionId}/pages`; // Define base uri
       try {
         const htmlContent = `<!DOCTYPE html>
@@ -196,16 +187,13 @@ export function registerPageTools(mcpServer: McpServer, azureClient: Client) {
     {
       id: z.string().describe("The ID of the page to retrieve content for"),
     },
-    async ({
-      id,
-    }: {
-      id: string;
-    }): Promise<{
+    async (args, extra): Promise<{
       content: {
         type: "resource";
         resource: { mimeType: string; text: string; uri: string }; // Added uri
       }[];
     }> => {
+      const { id } = args;
       const uri = `/me/onenote/pages/${id}/content`; // Define uri
       try {
         const pageMeta = await azureClient
@@ -274,13 +262,8 @@ export function registerPageTools(mcpServer: McpServer, azureClient: Client) {
           "The new page content in HTML format. This replaces the entire page body.",
         ),
     },
-    async ({
-      id,
-      content,
-    }: {
-      id: string;
-      content: string;
-    }): Promise<{ content: { type: "text"; text: string }[] }> => {
+    async (args, extra): Promise<{ content: { type: "text"; text: string }[] }> => {
+      const { id, content } = args;
       try {
         const patchPayload = [
           {
@@ -317,11 +300,8 @@ export function registerPageTools(mcpServer: McpServer, azureClient: Client) {
     {
       id: z.string().describe("The ID of the page to delete"),
     },
-    async ({
-      id,
-    }: {
-      id: string;
-    }): Promise<{ content: { type: "text"; text: string }[] }> => {
+    async (args, extra): Promise<{ content: { type: "text"; text: string }[] }> => {
+      const { id } = args;
       try {
         await azureClient.api(`/me/onenote/pages/${id}`).delete();
         return {

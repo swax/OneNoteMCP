@@ -12,7 +12,7 @@ export function registerNotebookTools(
     "listNotebooks",
     "List all OneNote notebooks",
     {}, // No input parameters
-    async (): Promise<{
+    async (args, extra): Promise<{
       content: {
         type: "resource";
         resource: { mimeType: string; text: string; uri: string };
@@ -58,16 +58,13 @@ export function registerNotebookTools(
     {
       id: z.string().describe("The ID of the notebook to retrieve"),
     },
-    async ({
-      id,
-    }: {
-      id: string;
-    }): Promise<{
+    async (args, extra): Promise<{
       content: {
         type: "resource";
         resource: { mimeType: string; text: string; uri: string };
       }[];
     }> => {
+      const { id } = args;
       const uri = `/me/onenote/notebooks/${id}`;
       try {
         const notebook = await azureClient
@@ -116,15 +113,13 @@ export function registerNotebookTools(
           "Optional name for an initial section within the new notebook",
         ),
     },
-    async ({
-      name,
-      sectionName,
-    }: NotebookCreateOptions): Promise<{
+    async (args, extra): Promise<{
       content: {
         type: "resource";
         resource: { mimeType: string; text: string; uri: string };
       }[];
     }> => {
+      const { name, sectionName } = args;
       const baseUri = "/me/onenote/notebooks";
       try {
         const notebook = await azureClient.api(baseUri).post({
@@ -172,11 +167,8 @@ export function registerNotebookTools(
     {
       id: z.string().describe("The ID of the notebook to delete"),
     },
-    async ({
-      id,
-    }: {
-      id: string;
-    }): Promise<{ content: { type: "text"; text: string }[] }> => {
+    async (args, extra): Promise<{ content: { type: "text"; text: string }[] }> => {
+      const { id } = args;
       const uri = `/me/onenote/notebooks/${id}`;
       try {
         await azureClient.api(uri).delete();
